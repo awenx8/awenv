@@ -1,0 +1,16 @@
+{
+	"root": false,
+	"files": {
+		"includes": [
+			"**/*.md",
+			"**/*.json",
+			"**/*.jsonc",
+			"**/*.js",
+			"**/*.ts",
+			"**/*.css",
+			"**/*.html",
+			"**/*.yml",
+			"**/*.yaml"
+		]
+	}
+}

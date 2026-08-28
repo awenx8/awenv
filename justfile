@@ -23,15 +23,15 @@ git-hooks:
     @echo ">> 启用 git pre-commit 钩子"
     @git config core.hooksPath .husky
 
-# 格式化
+# 格式化(Biome + rumdl,自动改写)
 fmt:
-    @echo ">> 格式化 markdown"
-    @rumdl fmt .
+    @echo ">> 格式化(js/ts + markdown)"
+    @biome format --write . && rumdl fmt .
 
 # 修复可修复的违规(有残留违规时退出 1)
 fix:
-    @echo ">> 修复 markdown 违规"
-    @rumdl check --fix .
+    @echo ">> 修复(js/ts + markdown)违规"
+    @biome check --write . && rumdl check --fix .
 
 # 安装 Rust 工具链(rustup)
 rust:
