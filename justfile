@@ -66,6 +66,8 @@ cargo-tools:
 
 # 打印 GUI 工具的下载地址(macOS/Windows)
 gui-tools:
+    @echo "提示: 以下桌面应用需自行前往对应地址下载并安装"
+    @echo "----------------------------------------"
     @echo "docker:       https://www.docker.com/products/docker-desktop/"
     @echo "git:          https://git-scm.com/downloads"
     @echo "github-desktop: https://desktop.github.com/"
