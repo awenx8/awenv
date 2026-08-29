@@ -19,7 +19,7 @@ default:
     @just --list
 
 # 安装全部工具
-setup: rust python bun biome cargo-tools gui-tools git-hooks
+setup: rust python bun biome dsh cargo-tools gui-tools git-hooks
     @echo "✅ 常用工具安装完成"
 
 # 启用 git 提交前钩子(执行 .husky/pre-commit)
@@ -55,6 +55,10 @@ bun:
 # 安装 Biome(JS/TS 格式化与检查,通过 bun 全局安装)
 biome: bun
     @{{require}}; require biome 'bun install -g @biomejs/biome'
+
+# 安装 DeepSeek Harness(可组合 AI 代理框架,通过 bun 全局安装)
+dsh: bun
+    @{{require}}; require dsh 'bun install -g @deepseek-ai/dsh'
 
 # 用 cargo 安装所有 CLI 工具(已安装则跳过)
 cargo-tools:
