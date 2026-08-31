@@ -19,8 +19,9 @@ default:
     @just --list
 
 # 安装全部工具
-setup: rust python bun biome dsh cargo-tools gui-tools git-hooks
+setup: git rust python bun biome dsh pi-agent cargo-tools gui-tools git-hooks
     @echo "✅ 常用工具安装完成"
+    @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
 
 # 启用 git 提交前钩子(执行 .husky/pre-commit)
 git-hooks:
@@ -36,6 +37,15 @@ fmt:
 fix:
     @echo ">> 修复(js/ts + markdown)违规"
     @biome check --write . && rumdl check --fix .
+
+# 安装 Git
+git:
+    @{{require}}; \
+    if [ "$(uname)" = "Darwin" ]; then \
+        require git 'xcode-select --install'; \
+    else \
+        require git 'sudo apt-get update && sudo apt-get install -y git'; \
+    fi
 
 # 安装 Rust 工具链(rustup)
 rust:
@@ -60,6 +70,10 @@ biome: bun
 dsh: bun
     @{{require}}; require dsh 'bun install -g @deepseek-ai/dsh'
 
+# 安装 Pi Agent(AI 代理工具,通过 bun 全局安装)
+pi-agent: bun
+    @{{require}}; require pi 'bun add -g --ignore-scripts @earendil-works/pi-coding-agent'
+
 # 用 cargo 安装所有 CLI 工具(已安装则跳过)
 cargo-tools:
     @{{require}}; \
@@ -72,11 +86,10 @@ cargo-tools:
 gui-tools:
     @echo "提示: 以下桌面应用需自行前往对应地址下载并安装"
     @echo "----------------------------------------"
-    @echo "docker:       https://www.docker.com/products/docker-desktop/"
-    @echo "git:          https://git-scm.com/downloads"
+    @echo "docker:         https://www.docker.com/products/docker-desktop/"
     @echo "github-desktop: https://desktop.github.com/"
-    @echo "vscode:       https://code.visualstudio.com/download"
-    @echo "zed:          https://zed.dev/"
-    @echo "百度翻译:     https://fanyi.baidu.com/download"
-    @echo "微信:         https://weixin.qq.com/"
-    @echo "微信输入法:   https://z.weixin.qq.com/"
+    @echo "vscode:         https://code.visualstudio.com/download"
+    @echo "zed:            https://zed.dev/"
+    @echo "百度翻译:       https://fanyi.baidu.com/download"
+    @echo "微信:           https://weixin.qq.com/"
+    @echo "微信输入法:     https://z.weixin.qq.com/"
