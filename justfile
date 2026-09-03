@@ -3,6 +3,7 @@
 # 用法:
 #   just            # 列出所有任务
 #   just setup      # 安装全部常用工具
+#   just cargo-tools bat ripgrep  # 只安装指定 cargo 工具
 
 # 通过 cargo 安装的个人常用 CLI 工具(crate -> 可执行文件名)
 # ripgrep(rg) 代码搜索 / bat 语法高亮 cat / fd-find 替代 find
@@ -74,10 +75,27 @@ dsh: bun
 pi-agent: bun
     @{{require}}; require pi 'bun add -g --ignore-scripts @earendil-works/pi-coding-agent'
 
-# 用 cargo 安装所有 CLI 工具(已安装则跳过)
-cargo-tools:
+# 用 cargo 安装 CLI 工具(已安装则跳过)
+# 用法: just cargo-tools [工具名...]
+# 示例: just cargo-tools bat ripgrep
+cargo-tools *TOOLS:
     @{{require}}; \
-    for entry in {{CARGO_TOOLS}}; do \
+    tools="{{TOOLS}}"; \
+    if [ -z "$tools" ]; then \
+        tools="{{CARGO_TOOLS}}"; \
+    else \
+        expanded=""; \
+        for t in $tools; do \
+            match=$(echo "{{CARGO_TOOLS}}" | tr ' ' '\n' | grep -E "^$t:|^$t\$" || true); \
+            if [ -n "$match" ]; then \
+                expanded="$expanded $match"; \
+            else \
+                echo "⚠ 未知工具: $t (跳过)"; \
+            fi; \
+        done; \
+        tools="$expanded"; \
+    fi; \
+    for entry in $tools; do \
         crate="${entry%%:*}"; bin="${entry##*:}"; \
         require "$bin" "cargo install $crate"; \
     done
@@ -86,6 +104,7 @@ cargo-tools:
 gui-tools:
     @echo "提示: 以下桌面应用需自行前往对应地址下载并安装"
     @echo "----------------------------------------"
+    @echo "dbx:            https://github.com/t8y2/dbx/releases"
     @echo "docker:         https://www.docker.com/products/docker-desktop/"
     @echo "github-desktop: https://desktop.github.com/"
     @echo "vscode:         https://code.visualstudio.com/download"
@@ -93,3 +112,8 @@ gui-tools:
     @echo "百度翻译:       https://fanyi.baidu.com/download"
     @echo "微信:           https://weixin.qq.com/"
     @echo "微信输入法:     https://z.weixin.qq.com/"
+    @echo "----------------------------------------"
+    @echo "字体下载"
+    @echo "----------------------------------------"
+    @echo "JetBrains Mono: https://www.jetbrains.com/zh-cn/lp/mono/"
+    @echo "LXGW WenKai:    https://github.com/lxgw/LxgwWenKai-Screen/releases"
