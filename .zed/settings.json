@@ -1,0 +1,22 @@
+{
+	"ui_font_family": "霞鹜文楷等宽 屏幕阅读版",
+	"ui_font_fallbacks": ["JetBrains Mono", "Fluent Emoji Color"],
+	"ui_font_weight": 400,
+	"ui_font_size": 16,
+	"buffer_font_family": "霞鹜文楷等宽 屏幕阅读版",
+	"buffer_font_fallbacks": ["JetBrains Mono", "Fluent Emoji Color"],
+	"buffer_font_size": 15,
+	"buffer_font_weight": 400,
+	"buffer_line_height": "comfortable",
+	"terminal": {
+		"font_family": "霞鹜文楷等宽 屏幕阅读版",
+		"font_fallbacks": ["JetBrains Mono", "Fluent Emoji Color"],
+		"font_size": 15,
+		"line_height": "standard"
+	},
+	"agent_ui_font_family": "霞鹜文楷等宽 屏幕阅读版",
+	"agent_ui_font_size": 15,
+	"agent_buffer_font_family": "霞鹜文楷等宽 屏幕阅读版",
+	"agent_buffer_font_size": 12,
+	"double_click_in_multibuffer": "open"
+}
