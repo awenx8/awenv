@@ -29,13 +29,18 @@ git-hooks:
     @echo ">> 启用 git pre-commit 钩子"
     @git config core.hooksPath .husky
 
-# 格式化(Biome + rumdl,自动改写)
+# 格式化代码
 fmt:
     @echo ">> 格式化(js/ts + markdown)"
     @biome format --write . && rumdl fmt .
 
-# 修复可修复的违规(有残留违规时退出 1)
-fix:
+# 检查代码
+lint: fmt
+    @rumdl check .
+    @biome check .
+
+# 修复代码
+fix: fmt
     @echo ">> 修复(js/ts + markdown)违规"
     @biome check --write . && rumdl check --fix .
 
@@ -55,6 +60,7 @@ rust:
 # 安装 Python 工具链(uv + 托管 Python)
 python:
     @{{require}}; require uv 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+    @{{require}}; require ruff 'uv tool install ruff@latest'
     @if command -v uv >/dev/null 2>&1; then \
         echo ">> 确保托管 Python 可用"; uv python install 3 || echo "跳过 Python(安装失败)"; \
     fi
