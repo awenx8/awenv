@@ -20,7 +20,7 @@ default:
     @just --list
 
 # 安装全部工具
-setup: git rust python bun biome dsh pi-agent cargo-tools gui-tools git-hooks
+setup: git rust python bun biome dsh pi-agent cargo-tools rtk-init gui-tools git-hooks
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
 
@@ -119,6 +119,11 @@ cargo-tools *TOOLS:
             require "$bin" "cargo install $crate"; \
         fi; \
     done
+
+# 初始化 rtk 的 pi agent 全局钩子与 RTK.md(需已安装 rtk,可经 cargo-tools)
+rtk-init:
+    @{{require}}; require rtk 'cargo install --git https://github.com/rtk-ai/rtk'
+    @rtk init -g --agent pi
 
 # 打印 GUI 工具的下载地址(macOS/Windows)
 gui-tools:
