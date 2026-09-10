@@ -24,10 +24,17 @@ setup: git rust python bun biome dsh pi-agent cargo-tools gui-tools git-hooks
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
 
-# 启用 git 提交前钩子(执行 .husky/pre-commit)
+# 启用 git 提交前钩子
 git-hooks:
-    @echo ">> 启用 git pre-commit 钩子"
-    @git config core.hooksPath .husky
+    @echo ">> 配置 git 全局钩子目录"
+    @mkdir -p ~/.config/git/hooks
+    @if [ -d .husky ]; then \
+        cp -f .husky/* ~/.config/git/hooks/; \
+        chmod +x ~/.config/git/hooks/*; \
+        echo "✅ Git 钩子已从 .husky 复制到 ~/.config/git/hooks/"; \
+    else \
+        echo ">> 未找到 .husky 目录,跳过复制钩子"; \
+    fi
 
 # 格式化代码
 fmt:
