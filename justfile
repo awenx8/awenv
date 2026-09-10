@@ -5,11 +5,11 @@
 #   just setup      # 安装全部常用工具
 #   just cargo-tools bat ripgrep  # 只安装指定 cargo 工具
 
-# 通过 cargo 安装的个人常用 CLI 工具(crate -> 可执行文件名)
+# 通过 cargo 安装的个人常用 CLI 工具(crate -> 可执行文件名,可选第三段为 git 源)
 # ripgrep(rg) 代码搜索 / bat 语法高亮 cat / fd-find 替代 find
 # eza 现代 ls / zoxide 智能 cd / bottom 系统监控
-# sqlx-cli 数据库迁移 / rumdl Markdown 检查
-CARGO_TOOLS := "bat:bat bottom:btm eza:eza fd-find:fd ripgrep:rg rumdl:rumdl sqlx-cli:sqlx zoxide:zoxide"
+# sqlx-cli 数据库迁移 / rumdl Markdown 检查 / rtk LLM token 优化代理
+CARGO_TOOLS := "bat:bat bottom:btm eza:eza fd-find:fd ripgrep:rg rtk:rtk:https://github.com/rtk-ai/rtk rumdl:rumdl sqlx-cli:sqlx zoxide:zoxide"
 
 # 通用守卫:命令已存在则跳过,否则执行安装命令
 # 用法: require <cmd> <安装命令>
@@ -109,8 +109,15 @@ cargo-tools *TOOLS:
         tools="$expanded"; \
     fi; \
     for entry in $tools; do \
-        crate="${entry%%:*}"; bin="${entry##*:}"; \
-        require "$bin" "cargo install $crate"; \
+        crate="${entry%%:*}"; \
+        rest="${entry#*:}"; \
+        bin="${rest%%:*}"; \
+        src="${rest#*:}"; \
+        if [ -n "$src" ]; then \
+            require "$bin" "cargo install --git $src"; \
+        else \
+            require "$bin" "cargo install $crate"; \
+        fi; \
     done
 
 # 打印 GUI 工具的下载地址(macOS/Windows)
