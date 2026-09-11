@@ -42,7 +42,7 @@ fmt:
     @biome format --write . && rumdl fmt .
 
 # 检查代码
-lint: fmt
+lint: fix
     @rumdl check .
     @biome check .
 
