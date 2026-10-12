@@ -3,13 +3,7 @@
 # 用法:
 #   just            # 列出所有任务
 #   just setup      # 安装全部常用工具
-#   just cargo-tools bat ripgrep  # 只安装指定 cargo 工具
-
-# 通过 cargo 安装的个人常用 CLI 工具(crate -> 可执行文件名,可选第三段为 git 源)
-# ripgrep(rg) 代码搜索 / bat 语法高亮 cat / fd-find 替代 find
-# eza 现代 ls / zoxide 智能 cd / bottom 系统监控
-# sqlx-cli 数据库迁移 / rumdl Markdown 检查 / rtk LLM token 优化代理
-CARGO_TOOLS := "bat:bat bottom:btm eza:eza fd-find:fd ripgrep:rg rtk:rtk:https://github.com/rtk-ai/rtk rumdl:rumdl sqlx-cli:sqlx zoxide:zoxide"
+#   just bat        # 只安装指定工具(见下方工具列表)
 
 # 通用守卫:命令已存在则跳过,否则执行安装命令
 # 用法: require <cmd> <安装命令>
@@ -20,7 +14,9 @@ default:
     @just --list
 
 # 安装全部工具
-setup: git rust python bun biome dsh pi-agent cargo-tools rtk-init gui-tools git-hooks
+setup: git rust python bun biome pi-agent \
+       bat bottom eza fd ripgrep rumdl sqlx-cli zoxide \
+       nushell rtk gui-tools git-hooks
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
 
@@ -64,64 +60,70 @@ git:
 rust:
     @{{require}}; require rustc 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
 
-# 安装 Python 工具链(uv + 托管 Python)
+# 安装 Python 工具链(uv + 托管 Python 3.12,并设为全局默认版本)
 python:
     @{{require}}; require uv 'curl -LsSf https://astral.sh/uv/install.sh | sh'
     @{{require}}; require ruff 'uv tool install ruff@latest'
     @if command -v uv >/dev/null 2>&1; then \
-        echo ">> 确保托管 Python 可用"; uv python install 3 || echo "跳过 Python(安装失败)"; \
+        echo ">> 安装托管 Python 3.12 并设为默认"; \
+        uv python install 3.12 --default || echo "跳过 Python(安装失败)"; \
+        uv python pin --global 3.12 || echo "跳过全局默认版本设置"; \
     fi
 
-# 安装 bun JavaScript 运行时
+# 安装 bun JavaScript 运行时(安装脚本依赖 unzip)
 bun:
+    @{{require}}; \
+    if ! command -v bun >/dev/null 2>&1 && [ "$(uname)" != "Darwin" ]; then \
+        require unzip 'sudo apt-get update && sudo apt-get install -y unzip'; \
+    fi
     @{{require}}; require bun 'curl -fsSL https://bun.sh/install | bash'
 
 # 安装 Biome(JS/TS 格式化与检查,通过 bun 全局安装)
 biome: bun
     @{{require}}; require biome 'bun install -g @biomejs/biome'
 
-# 安装 DeepSeek Harness(可组合 AI 代理框架,通过 bun 全局安装)
-dsh: bun
-    @{{require}}; require dsh 'bun install -g @deepseek-ai/dsh'
+# 安装 Pi Agent(AI 代理工具,通过官方安装脚本)
+pi-agent:
+    @{{require}}; require pi 'curl -fsSL https://pi.dev/install.sh | sh'
 
-# 安装 Pi Agent(AI 代理工具,通过 bun 全局安装)
-pi-agent: bun
-    @{{require}}; require pi 'bun add -g --ignore-scripts @earendil-works/pi-coding-agent'
+# 安装 bat(语法高亮 cat)
+bat: rust
+    @{{require}}; require bat 'cargo install bat'
 
-# 用 cargo 安装 CLI 工具(已安装则跳过)
-# 用法: just cargo-tools [工具名...]
-# 示例: just cargo-tools bat ripgrep
-cargo-tools *TOOLS:
-    @{{require}}; \
-    tools="{{TOOLS}}"; \
-    if [ -z "$tools" ]; then \
-        tools="{{CARGO_TOOLS}}"; \
-    else \
-        expanded=""; \
-        for t in $tools; do \
-            match=$(echo "{{CARGO_TOOLS}}" | tr ' ' '\n' | grep -E "^$t:|^$t\$" || true); \
-            if [ -n "$match" ]; then \
-                expanded="$expanded $match"; \
-            else \
-                echo "⚠ 未知工具: $t (跳过)"; \
-            fi; \
-        done; \
-        tools="$expanded"; \
-    fi; \
-    for entry in $tools; do \
-        crate="${entry%%:*}"; \
-        rest="${entry#*:}"; \
-        bin="${rest%%:*}"; \
-        src="${rest#*:}"; \
-        if [ -n "$src" ]; then \
-            require "$bin" "cargo install --git $src"; \
-        else \
-            require "$bin" "cargo install $crate"; \
-        fi; \
-    done
+# 安装 bottom(系统监控)
+bottom: rust
+    @{{require}}; require btm 'cargo install bottom'
 
-# 初始化 rtk 的 pi agent 全局钩子与 RTK.md(需已安装 rtk,可经 cargo-tools)
-rtk-init:
+# 安装 eza(现代 ls)
+eza: rust
+    @{{require}}; require eza 'cargo install eza'
+
+# 安装 fd(替代 find)
+fd: rust
+    @{{require}}; require fd 'cargo install fd-find'
+
+# 安装 ripgrep(代码搜索)
+ripgrep: rust
+    @{{require}}; require rg 'cargo install ripgrep'
+
+# 安装 rumdl(Markdown 检查)
+rumdl: rust
+    @{{require}}; require rumdl 'cargo install rumdl'
+
+# 安装 sqlx-cli(数据库迁移)
+sqlx-cli: rust
+    @{{require}}; require sqlx 'cargo install sqlx-cli'
+
+# 安装 zoxide(智能 cd)
+zoxide: rust
+    @{{require}}; require zoxide 'cargo install zoxide'
+
+# 安装 Nushell(现代 shell,通过 cargo 安装)
+nushell: rust
+    @{{require}}; require nu 'cargo install nu'
+
+# 初始化 rtk 的 pi agent 全局钩子与 RTK.md
+rtk:
     @{{require}}; require rtk 'cargo install --git https://github.com/rtk-ai/rtk'
     @rtk init -g --agent pi
 
@@ -132,6 +134,7 @@ gui-tools:
     @echo "dbx:            https://github.com/t8y2/dbx/releases"
     @echo "docker:         https://www.docker.com/products/docker-desktop/"
     @echo "github-desktop: https://desktop.github.com/"
+    @echo "oxideterm:      https://oxideterm.app/zh-hans/"
     @echo "vscode:         https://code.visualstudio.com/download"
     @echo "zed:            https://zed.dev/"
     @echo "百度翻译:       https://fanyi.baidu.com/download"
