@@ -6,24 +6,25 @@
 
 安装（任选其一）:
 
+1. 用 uv 安装（推荐）
+
+```bash
+# On macOS and Linux.
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install rust-just
+```
+
+```bash
+# On Windows.
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+uv tool install rust-just
+```
+
+2. 用 cargo 安装
+
 ```bash
 # 跨平台（cargo）
 cargo install just
-```
-
-```bash
-# 跨平台（npm）
-npm install -g rust-just
-```
-
-```bash
-# macOS / WSL / Linux
-brew install just
-```
-
-```bash
-# Windows（PowerShell）
-scoop install just
 ```
 
 ## 使用指南

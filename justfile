@@ -16,7 +16,7 @@ default:
 # 安装全部工具
 setup: git rust python bun biome pi-agent \
        bat bottom eza fd ripgrep rumdl sqlx-cli zoxide \
-       nushell rtk gui-tools git-hooks
+       rtk gui-tools git-hooks
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
 
@@ -117,10 +117,6 @@ sqlx-cli: rust
 # 安装 zoxide(智能 cd)
 zoxide: rust
     @{{require}}; require zoxide 'cargo install zoxide'
-
-# 安装 Nushell(现代 shell,通过 cargo 安装)
-nushell: rust
-    @{{require}}; require nu 'cargo install nu'
 
 # 初始化 rtk 的 pi agent 全局钩子与 RTK.md
 rtk:
