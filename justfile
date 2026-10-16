@@ -11,10 +11,6 @@ set default-list := true
 # 用法: require <cmd> <安装命令>
 require := 'require() { tool="$1"; if command -v "$tool" >/dev/null 2>&1; then echo "✓ $tool 已安装,跳过"; else shift; echo ">> 安装 $tool"; eval "$@" || echo "跳过 $tool(可能已安装)"; fi; }'
 
-# 默认任务:列出全部任务
-default:
-    @just --list
-
 # 安装全部工具
 setup: git rust cargo-tools apt python bun biome pi-agent \
        rtk git-hooks gui-tools
