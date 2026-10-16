@@ -81,6 +81,24 @@ rtk:
     @{{require}}; require rtk 'curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh'
     @echo "💡 执行: rtk init -g # 接入 AI 工具 Claude Code / Copilot"
 
+# 代理端口: 写入 ~/.bashrc 的代理别名统一使用该端口
+proxy_port := '33211'
+
+# 代理开关名: 开启代理用 px,关闭代理用 unpx
+proxy_on := 'px'
+
+proxy_off := 'unpx'
+
+# 写入 ~/.bashrc 的代理开关(已存在则跳过)
+proxy:
+    @if grep -q "^{{proxy_on}}()" "$HOME/.bashrc" 2>/dev/null; then \
+        echo "✓ 代理开关已存在于 ~/.bashrc,跳过"; \
+    else \
+        printf '\n# 代理开关 ({{proxy_port}})\n{{proxy_on}}() { export http_proxy=http://127.0.0.1:{{proxy_port}} https_proxy=http://127.0.0.1:{{proxy_port}} all_proxy=socks5://127.0.0.1:{{proxy_port}} no_proxy=localhost,127.0.0.1,::1; }\n{{proxy_off}}() { unset http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY; }\n' >> "$HOME/.bashrc"; \
+        echo "✅ 已写入代理开关 {{proxy_on}} / {{proxy_off}} 到 ~/.bashrc"; \
+    fi
+    @echo "💡 执行: source ~/.bashrc # 生效后用 {{proxy_on}} / {{proxy_off}} 开关代理"
+
 # 打印 GUI 工具的下载地址(macOS/Windows)
 gui-tools:
     @echo "提示: 以下桌面应用需自行前往对应地址下载并安装"
