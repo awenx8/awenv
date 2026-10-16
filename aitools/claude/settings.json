@@ -1,0 +1,26 @@
+{
+    "env": {
+        "ANTHROPIC_AUTH_TOKEN": "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL": "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1000000"
+    },
+    "permissions": {
+        "defaultMode": "bypassPermissions"
+    },
+    "attribution": {
+        "commit": "",
+        "pr": ""
+    },
+    "skipDangerousModePermissionPrompt": true,
+    "enableArtifact": false,
+    "enableWorkflows": false,
+    "feedbackDrafts": "off",
+    "skillOverrides": {
+        "dataviz": "off",
+        "artifact-design": "off",
+        "artifact-diagramming": "off",
+        "workflow-authoring": "off"
+    }
+}

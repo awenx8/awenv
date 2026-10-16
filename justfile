@@ -8,52 +8,25 @@
 #   just             # 列出所有任务
 #   just setup       # 安装全部常用工具
 #   just cargo-tools # 只安装 Rust 工具
-#   just fmt         # 格式化代码(markdown)
+#   just claude      # 列出 Claude Code 子项目的全部任务
 
 # 列出任务时一并显示各配方紧邻上方的描述行
 set default-list := true
 
-# 通用守卫:命令已存在则跳过,否则执行安装命令
+# 通用守卫: 命令已存在则跳过,否则执行安装命令
 # 用法: require <cmd> <安装命令>
-# 先用 command -v 探测 <cmd>:已存在则打印跳过信息并原样返回;
-# 不存在则 shift 后把剩余参数交给 eval 作为安装命令,失败也仅告警不中断
-# 注意: 守卫只看 <cmd> 这一个命令,同一条配方内的其余工具不会被单独校验
 require := 'require() { tool="$1"; if command -v "$tool" >/dev/null 2>&1; then echo "✓ $tool 已安装,跳过"; else shift; echo ">> 安装 $tool"; eval "$@" || echo "跳过 $tool"; fi; }'
 
 # 安装全部工具
-setup: apt rust cargo-tools python bun pi-agent \
+setup: apt rust cargo-tools python bun \
        rtk git-hooks gui-tools
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
 
-# 把仓库内的 .husky 脚本复制到 ~/.config/git/hooks 并赋予可执行权限
-# 前提: git 的 core.hooksPath 需指向该目录,否则复制后不会被 git 加载
-#
-# 启用 git 提交前钩子
-git-hooks:
-    @echo ">> 配置 git 全局钩子目录"
-    @mkdir -p ~/.config/git/hooks
-    @if [ -d .husky ]; then \
-        cp -f .husky/* ~/.config/git/hooks/; \
-        chmod +x ~/.config/git/hooks/*; \
-        echo "✅ Git 钩子已从 .husky 复制到 ~/.config/git/hooks/"; \
-    else \
-        echo ">> 未找到 .husky 目录,跳过复制钩子"; \
-    fi
-
-# 格式化代码
-fmt:
-    @echo ">> 格式化(markdown)"
-    @rumdl fmt .
-
-# 检查代码
-lint: fix
-    @rumdl check .
-
-# 修复代码
-fix: fmt
-    @echo ">> 修复(markdown)违规"
-    @rumdl check --fix .
+# 转发到子项目: 进入 aitools/claude/ 执行其 justfile 中的命令
+# 用法: just claude setup / just claude config / just claude statusline
+claude *args: setup
+    @cd "{{ justfile_directory() }}/aitools/claude" && just {{ args }}
 
 # 安装 apt 基础工具
 apt:
@@ -88,7 +61,9 @@ python_version := '3.12'
 # 安装 Python 工具链(uv + 托管 Python,并设为全局默认版本)
 python:
     @{{require}}; require uv 'curl -LsSf https://astral.sh/uv/install.sh | sh'
-    @{{require}}; require ruff 'uv tool install ruff mypy pre-commit'
+    @{{require}}; require mypy 'uv tool install mypy'
+    @{{require}}; require pre-commit 'uv tool install pre-commit'
+    @{{require}}; require ruff 'uv tool install ruff'
     echo ">> 安装托管 Python {{python_version}} 并设为默认"; \
     uv python install {{python_version}} --default || echo "跳过 Python(安装失败)"; \
     uv python pin --global {{python_version}} || echo "跳过全局默认版本设置"; \
@@ -124,3 +99,29 @@ gui-tools:
     @echo "----------------------------------------"
     @echo "JetBrains Mono: https://www.jetbrains.com/zh-cn/lp/mono/"
     @echo "LXGW WenKai:    https://github.com/lxgw/LxgwWenKai-Screen/releases"
+
+# 启用 git 提交前钩子
+git-hooks:
+    @echo ">> 配置 git 全局钩子目录"
+    @mkdir -p ~/.config/git/hooks
+    @if [ -d .husky ]; then \
+        cp -f .husky/* ~/.config/git/hooks/; \
+        chmod +x ~/.config/git/hooks/*; \
+        echo "✅ Git 钩子已从 .husky 复制到 ~/.config/git/hooks/"; \
+    else \
+        echo ">> 未找到 .husky 目录,跳过复制钩子"; \
+    fi
+
+# 格式化代码
+fmt:
+    @echo ">> 格式化(markdown)"
+    @rumdl fmt .
+
+# 检查代码
+lint: fix
+    @rumdl check .
+
+# 修复代码
+fix: fmt
+    @echo ">> 修复(markdown)违规"
+    @rumdl check --fix .

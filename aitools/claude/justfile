@@ -1,0 +1,151 @@
+
+# Claude Code 一键安装与配置
+#
+# 用法:
+#   just setup          一键执行全部步骤
+#   just install        仅安装 Claude Code
+#   just config         仅写入配置（token 与 base url 交互输入）
+
+set default-list := true
+
+# 非交互配置来源；留空时由 config recipe 交互读取
+token_arg := env("ANTHROPIC_TOKEN", "")
+url_arg := env("ANTHROPIC_BASE_URL", "")
+model_arg := env("ANTHROPIC_MODEL", "")
+opus_arg := env("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+max_ctx_arg := env("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "1000000")
+
+# 一键执行: 安装 → 配置 → 状态栏 → 别名
+setup: install config statusline cc-alias
+	@echo "完成。执行 source ~/.bashrc 后用 cc 启动 Claude Code。"
+
+# 安装 Claude Code；已在 PATH 中则跳过安装与文件覆盖
+install:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	if command -v claude >/dev/null 2>&1; then
+	  echo "==> 已安装，跳过安装与文件覆盖: $(command -v claude)"
+	  exit 0
+	fi
+
+	echo "==> 安装 Claude Code"
+	curl -fsSL https://claude.ai/install.sh | bash
+
+	# 整文件覆盖，跳过 Anthropic 服务连通性检测
+	state_file="$HOME/.claude.json"
+	printf '{"hasCompletedOnboarding":true}\n' >"$state_file"
+	echo "==> 已标记 onboarding: $state_file"
+
+# 写入 ~/.claude/settings.json
+config: cc-alias
+	#!/usr/bin/env bash
+	set -euo pipefail
+	template="{{ justfile_directory() }}/settings.json"
+	settings_file="$HOME/.claude/settings.json"
+
+	token='{{ token_arg }}'
+	base_url='{{ url_arg }}'
+	model='{{ model_arg }}'
+	opus='{{ opus_arg }}'
+	max_ctx='{{ max_ctx_arg }}'
+	if [ -z "$token" ]; then
+	  printf '==> ANTHROPIC_AUTH_TOKEN: '
+	  read -r -s token || true
+	  printf '\n'
+	fi
+	if [ -z "$base_url" ]; then
+	  printf '==> ANTHROPIC_BASE_URL: '
+	  read -r base_url || true
+	  printf '\n'
+	fi
+	if [ -z "$model" ]; then
+	  printf '==> ANTHROPIC_MODEL (留空则不写入): '
+	  read -r model || true
+	  printf '\n'
+	fi
+	# OPUS 档位模型默认取主模型，可单独覆盖
+	if [ -z "$opus" ]; then opus="$model"; fi
+	if [ -z "$model" ]; then
+	  if [ -n "$opus" ]; then
+	    printf '==> ANTHROPIC_DEFAULT_OPUS_MODEL: '
+	    read -r opus || true
+	  fi
+	else
+	  printf '==> ANTHROPIC_DEFAULT_OPUS_MODEL 默认使用 %s，回车确认（或输入其他值）\n' "$model"
+	  printf '==> ANTHROPIC_DEFAULT_OPUS_MODEL [%s]: ' "$opus"
+	  read -r input || true; opus="${input:-$opus}"
+	fi
+	[ -n "$token" ] || { echo "ANTHROPIC_AUTH_TOKEN 不能为空" >&2; exit 1; }
+	[ -n "$base_url" ] || { echo "ANTHROPIC_BASE_URL 不能为空" >&2; exit 1; }
+
+	# 上下文 token 上限
+	printf '==> CLAUDE_CODE_MAX_CONTEXT_TOKENS 默认使用 %s，回车确认（或输入其他值）\n' "$max_ctx"
+	printf '==> CLAUDE_CODE_MAX_CONTEXT_TOKENS [%s]: ' "$max_ctx"
+	read -r input || true; max_ctx="${input:-$max_ctx}"
+	if ! [[ "$max_ctx" =~ ^[0-9]+$ ]] || [ "$max_ctx" -le 0 ]; then
+	  echo "CLAUDE_CODE_MAX_CONTEXT_TOKENS 必须为正整数" >&2
+	  exit 1
+	fi
+
+	mkdir -p "$(dirname "$settings_file")"
+	[ -f "$settings_file" ] || printf '{}\n' >"$settings_file"
+
+	echo "==> 合并 $template -> $settings_file"
+	payload="$(jq --arg token "$token" --arg base_url "$base_url" \
+	  --arg model "$model" --arg opus "$opus" --arg max_ctx "$max_ctx" \
+	  '.env.ANTHROPIC_AUTH_TOKEN = $token | .env.ANTHROPIC_BASE_URL = $base_url
+	   | .env.ANTHROPIC_MODEL = $model
+	   | .env.ANTHROPIC_DEFAULT_OPUS_MODEL = $opus
+	   | .env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = $max_ctx' \
+	  "$template")"
+	tmp="$(mktemp)"
+	# 留空则从合并结果中删除，避免旧值残留
+	jq -s --argjson payload "$payload" --arg model "$model" --arg opus "$opus" \
+	  '.[0] * $payload
+	   | (if $model == "" then del(.env.ANTHROPIC_MODEL) else . end)
+	   | (if $opus == "" then del(.env.ANTHROPIC_DEFAULT_OPUS_MODEL) else . end)' \
+	  "$settings_file" >"$tmp"
+	mv "$tmp" "$settings_file"
+	chmod 600 "$settings_file"
+
+# 安装状态栏脚本并注册到 ~/.claude/settings.json
+statusline:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	src="{{ justfile_directory() }}/statusline-command.sh"
+	dest="$HOME/.claude/statusline-command.sh"
+	settings_file="$HOME/.claude/settings.json"
+
+	echo "==> 安装到 $dest"
+	mkdir -p "$(dirname "$dest")"
+	install -m 755 "$src" "$dest"
+
+	# 源文件若在 Windows 编辑器中保存过会变成 CRLF，bash 会直接语法错误；统一改成 LF
+	tmp="$(mktemp)"
+	sed -e 's/\r$//' "$dest" >"$tmp"
+	mv "$tmp" "$dest"
+	chmod 755 "$dest"
+
+	mkdir -p "$(dirname "$settings_file")"
+	[ -f "$settings_file" ] || printf '{}\n' >"$settings_file"
+	statusline="$(jq -nc --arg c "$dest" '{type:"command",command:$c}')"
+	tmp="$(mktemp)"
+	jq -s --argjson sl "$statusline" '.[0] | .statusLine = $sl' "$settings_file" >"$tmp"
+	mv "$tmp" "$settings_file"
+	echo "==> 已注册 statusLine"
+	echo "==> 配置文件: $settings_file"
+
+# 写入 cc 别名，已存在则跳过
+cc-alias:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	rc="$HOME/.bashrc"
+	line="alias cc='IS_SANDBOX=1 claude --disallowedTools DesignSync NotebookEdit EnterWorktree ExitWorktree'"
+	mkdir -p "$(dirname "$rc")"
+	[ -f "$rc" ] || touch "$rc"
+	if grep -qxF "$line" "$rc"; then
+	  echo "==> 别名已存在: $rc"
+	else
+	  printf '%s\n' "$line" >>"$rc"
+	  echo "==> 已写入 $rc"
+	fi
