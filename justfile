@@ -15,10 +15,11 @@ set default-list := true
 
 # 通用守卫: 命令已存在则跳过,否则执行安装命令
 # 用法: require <cmd> <安装命令>
-require := 'require() { tool="$1"; if command -v "$tool" >/dev/null 2>&1; then echo "✓ $tool 已安装,跳过"; else shift; echo ">> 安装 $tool"; eval "$@" || echo "跳过 $tool"; fi; }'
+# 先补全 cargo 安装目录,否则刚装好的工具会被判为缺失
+require := 'export PATH="$HOME/.cargo/bin:$PATH"; require() { tool="$1"; if command -v "$tool" >/dev/null 2>&1; then echo "✓ $tool 已安装,跳过"; else shift; echo ">> 安装 $tool"; eval "$@" || echo "跳过 $tool"; fi; }'
 
 # 安装全部工具
-setup: apt rust cargo-tools python bun sqlx proxy \
+setup: apt rust cargo-tools python bun node sqlx proxy \
        rtk git-hooks gui-tools
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
@@ -39,22 +40,36 @@ rust:
 # 安装 Rust 工具
 cargo-tools: rust
     @{{require}}; require cargo-binstall 'cargo install cargo-binstall'
-    @echo ">> 安装 Rust 工具"
-    @cargo-binstall -y \
-        bat \
-        bottom \
-        eza \
-        fd-find \
-        git-delta \
-        just \
-        ripgrep \
-        rumdl \
-        sqlx-cli \
-        starship \
-        tokei \
-        zoxide
-    @if [ -x "$HOME/.cargo/bin/fdfind" ]; then \
-        ln -sf "$HOME/.cargo/bin/fdfind" "$HOME/.cargo/bin/fd"; \
+    # 条目格式 crate:二进制名, 全就绪则整体跳过
+    @missing=""; \
+    for pair in \
+        bat:bat \
+        bottom:btm \
+        eza:eza \
+        fd-find:fd \
+        fnm:fnm \
+        git-delta:delta \
+        just:just \
+        ripgrep:rg \
+        rumdl:rumdl \
+        sqlx-cli:sqlx \
+        starship:starship \
+        tokei:tokei \
+        zoxide:zoxide; do \
+        crate="${pair%%:*}"; \
+        bin="${pair#*:}"; \
+        if command -v "$bin" >/dev/null 2>&1; then \
+            echo "✓ $crate 已安装,跳过"; \
+        else \
+            echo ">> $crate 缺失"; \
+            missing="$missing $crate"; \
+        fi; \
+    done; \
+    if [ -n "$missing" ]; then \
+        echo ">> 安装 Rust 工具:$missing"; \
+        cargo-binstall -y $missing || echo "跳过缺失的 Rust 工具"; \
+    else \
+        echo "✓ Rust 工具均已安装,跳过"; \
     fi
 
 # 安装 sqlx-cli(无预编译包,需源码编译;rustls 为纯 Rust,无需系统 openssl)
@@ -81,6 +96,18 @@ bun:
         require unzip 'sudo apt install -y unzip'; \
     fi
     @{{require}}; require bun 'curl -fsSL https://bun.sh/install | bash'
+
+# 托管 Node.js 版本:安装与全局默认版本共用
+nodejs_version := '24'
+# 安装 Node.js 运行时
+node: cargo-tools
+    @echo ">> 安装 Node.js {{nodejs_version}} 并设为默认"
+    @fnm install {{nodejs_version}} || echo "跳过 Node.js(安装失败)"
+    @fnm default {{nodejs_version}} || echo "跳过全局默认版本设置"
+    @sed -i '/^# fnm(Node.js 版本管理)/d; /^eval ".*\$(fnm env --use-on-cd)"/d' "$HOME/.bashrc" 2>/dev/null || true
+    @printf '\n# fnm(Node.js 版本管理)\neval "$(fnm env --use-on-cd)"\n' >> "$HOME/.bashrc"
+    @echo "✅ 已写入 fnm 初始化到 ~/.bashrc"
+    @echo "💡 执行: source ~/.bashrc # 生效后 node/npm 可用, 进项目目录自动切换版本"
 
 # 安装 rtk: 压缩命令行输出,降低 AI 编程助手的 token 消耗
 rtk:
