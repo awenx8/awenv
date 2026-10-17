@@ -4,6 +4,9 @@
         "ANTHROPIC_BASE_URL": "ANTHROPIC_BASE_URL",
         "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
         "ANTHROPIC_DEFAULT_OPUS_MODEL": "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_FABLE_MODEL": "ANTHROPIC_DEFAULT_FABLE_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "ANTHROPIC_DEFAULT_HAIKU_MODEL",
         "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1000000"
     },
     "permissions": {
@@ -14,13 +17,16 @@
         "pr": ""
     },
     "skipDangerousModePermissionPrompt": true,
-    "enableArtifact": false,
     "enableWorkflows": false,
-    "feedbackDrafts": "off",
     "skillOverrides": {
         "dataviz": "off",
-        "artifact-design": "off",
+        "claude-api": "off",
+        "update-config": "off",
+        "plugin-authoring": "off",
+        "workflow-authoring": "off",
+        "keybindings-help": "off",
         "artifact-diagramming": "off",
-        "workflow-authoring": "off"
+        "artifact-design": "off",
+        "fewer-permission-prompts": "off"
     }
 }

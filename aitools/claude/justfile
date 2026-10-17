@@ -13,6 +13,9 @@ token_arg := env("ANTHROPIC_TOKEN", "")
 url_arg := env("ANTHROPIC_BASE_URL", "")
 model_arg := env("ANTHROPIC_MODEL", "")
 opus_arg := env("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+fable_arg := env("ANTHROPIC_DEFAULT_FABLE_MODEL", "")
+sonnet_arg := env("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+haiku_arg := env("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
 max_ctx_arg := env("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "1000000")
 
 # 一键执行: 安装 → 配置 → 状态栏 → 别名
@@ -37,7 +40,7 @@ install:
 	echo "==> 已标记 onboarding: $state_file"
 
 # 写入 ~/.claude/settings.json
-config: cc-alias
+config:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	template="{{ justfile_directory() }}/settings.json"
@@ -47,6 +50,9 @@ config: cc-alias
 	base_url='{{ url_arg }}'
 	model='{{ model_arg }}'
 	opus='{{ opus_arg }}'
+	fable='{{ fable_arg }}'
+	sonnet='{{ sonnet_arg }}'
+	haiku='{{ haiku_arg }}'
 	max_ctx='{{ max_ctx_arg }}'
 	if [ -z "$token" ]; then
 	  printf '==> ANTHROPIC_AUTH_TOKEN: '
@@ -63,18 +69,26 @@ config: cc-alias
 	  read -r model || true
 	  printf '\n'
 	fi
-	# OPUS 档位模型默认取主模型，可单独覆盖
-	if [ -z "$opus" ]; then opus="$model"; fi
-	if [ -z "$model" ]; then
-	  if [ -n "$opus" ]; then
-	    printf '==> ANTHROPIC_DEFAULT_OPUS_MODEL: '
-	    read -r opus || true
+	# 档位模型（OPUS/FABLE/SONNET/HAIKU）默认取主模型，可单独覆盖
+	ask_tier() {
+	  local -n ref="$1"
+	  local key="$2"
+	  if [ -z "$model" ]; then
+	    # 主模型为空且该档位未赋值时跳过，不写入
+	    [ -n "$ref" ] || return 0
+	    printf '==> %s: ' "$key"
+	    read -r ref || true
+	  else
+	    if [ -z "$ref" ]; then ref="$model"; fi
+	    printf '==> %s 默认使用 %s，回车确认（或输入其他值）\n' "$key" "$ref"
+	    printf '==> %s [%s]: ' "$key" "$ref"
+	    local input; read -r input || true; ref="${input:-$ref}"
 	  fi
-	else
-	  printf '==> ANTHROPIC_DEFAULT_OPUS_MODEL 默认使用 %s，回车确认（或输入其他值）\n' "$model"
-	  printf '==> ANTHROPIC_DEFAULT_OPUS_MODEL [%s]: ' "$opus"
-	  read -r input || true; opus="${input:-$opus}"
-	fi
+	}
+	ask_tier opus ANTHROPIC_DEFAULT_OPUS_MODEL
+	ask_tier fable ANTHROPIC_DEFAULT_FABLE_MODEL
+	ask_tier sonnet ANTHROPIC_DEFAULT_SONNET_MODEL
+	ask_tier haiku ANTHROPIC_DEFAULT_HAIKU_MODEL
 	[ -n "$token" ] || { echo "ANTHROPIC_AUTH_TOKEN 不能为空" >&2; exit 1; }
 	[ -n "$base_url" ] || { echo "ANTHROPIC_BASE_URL 不能为空" >&2; exit 1; }
 
@@ -92,18 +106,29 @@ config: cc-alias
 
 	echo "==> 合并 $template -> $settings_file"
 	payload="$(jq --arg token "$token" --arg base_url "$base_url" \
-	  --arg model "$model" --arg opus "$opus" --arg max_ctx "$max_ctx" \
+	  --arg model "$model" \
+	  --arg opus "$opus" --arg fable "$fable" --arg sonnet "$sonnet" --arg haiku "$haiku" \
+	  --arg max_ctx "$max_ctx" \
 	  '.env.ANTHROPIC_AUTH_TOKEN = $token | .env.ANTHROPIC_BASE_URL = $base_url
 	   | .env.ANTHROPIC_MODEL = $model
 	   | .env.ANTHROPIC_DEFAULT_OPUS_MODEL = $opus
+	   | .env.ANTHROPIC_DEFAULT_FABLE_MODEL = $fable
+	   | .env.ANTHROPIC_DEFAULT_SONNET_MODEL = $sonnet
+	   | .env.ANTHROPIC_DEFAULT_HAIKU_MODEL = $haiku
 	   | .env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = $max_ctx' \
 	  "$template")"
 	tmp="$(mktemp)"
 	# 留空则从合并结果中删除，避免旧值残留
-	jq -s --argjson payload "$payload" --arg model "$model" --arg opus "$opus" \
-	  '.[0] * $payload
-	   | (if $model == "" then del(.env.ANTHROPIC_MODEL) else . end)
-	   | (if $opus == "" then del(.env.ANTHROPIC_DEFAULT_OPUS_MODEL) else . end)' \
+	jq -s --argjson payload "$payload" \
+	  --arg model "$model" \
+	  --arg opus "$opus" --arg fable "$fable" --arg sonnet "$sonnet" --arg haiku "$haiku" \
+	  'def del_if_empty($k; $v): if $v == "" then del(.env[$k]) else . end;
+	  .[0] * $payload
+	   | del_if_empty("ANTHROPIC_MODEL"; $model)
+	   | del_if_empty("ANTHROPIC_DEFAULT_OPUS_MODEL"; $opus)
+	   | del_if_empty("ANTHROPIC_DEFAULT_FABLE_MODEL"; $fable)
+	   | del_if_empty("ANTHROPIC_DEFAULT_SONNET_MODEL"; $sonnet)
+	   | del_if_empty("ANTHROPIC_DEFAULT_HAIKU_MODEL"; $haiku)' \
 	  "$settings_file" >"$tmp"
 	mv "$tmp" "$settings_file"
 	chmod 600 "$settings_file"
@@ -135,7 +160,7 @@ statusline:
 	echo "==> 已注册 statusLine"
 	echo "==> 配置文件: $settings_file"
 
-# 写入 cc 别名，已存在则跳过
+# 写入 cc 别名，已存在则直接覆盖
 cc-alias:
 	#!/usr/bin/env bash
 	set -euo pipefail
@@ -145,7 +170,11 @@ cc-alias:
 	[ -f "$rc" ] || touch "$rc"
 	if grep -qxF "$line" "$rc"; then
 	  echo "==> 别名已存在: $rc"
-	else
-	  printf '%s\n' "$line" >>"$rc"
-	  echo "==> 已写入 $rc"
+	  exit 0
 	fi
+	# 覆盖旧的 cc 别名行，避免同名别名堆积（后者覆盖前者）
+	tmp="$(mktemp)"
+	sed '/^alias cc=/d' "$rc" >"$tmp"
+	printf '%s\n' "$line" >>"$tmp"
+	mv "$tmp" "$rc"
+	echo "==> 已覆盖写入 $rc"
