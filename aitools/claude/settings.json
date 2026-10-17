@@ -17,6 +17,7 @@
         "pr": ""
     },
     "skipDangerousModePermissionPrompt": true,
+    "enableArtifact": false,
     "enableWorkflows": false,
     "skillOverrides": {
         "dataviz": "off",
