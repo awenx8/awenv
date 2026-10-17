@@ -18,7 +18,7 @@ set default-list := true
 require := 'require() { tool="$1"; if command -v "$tool" >/dev/null 2>&1; then echo "✓ $tool 已安装,跳过"; else shift; echo ">> 安装 $tool"; eval "$@" || echo "跳过 $tool"; fi; }'
 
 # 安装全部工具
-setup: apt rust cargo-tools python bun \
+setup: apt rust cargo-tools python bun sqlx\
        rtk git-hooks gui-tools
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
@@ -53,7 +53,13 @@ cargo-tools: rust
         starship \
         tokei \
         zoxide
-    @ln -sf "$HOME/.cargo/bin/fdfind" "$HOME/.cargo/bin/fd"
+    @if [ -x "$HOME/.cargo/bin/fdfind" ]; then \
+        ln -sf "$HOME/.cargo/bin/fdfind" "$HOME/.cargo/bin/fd"; \
+    fi
+
+# 安装 sqlx-cli(无预编译包,需源码编译;rustls 为纯 Rust,无需系统 openssl)
+sqlx: rust
+    @{{require}}; require sqlx 'cargo install sqlx-cli'
 
 # 托管 Python 版本:安装与全局默认版本共用
 python_version := '3.12'
