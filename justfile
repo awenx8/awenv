@@ -18,7 +18,7 @@ set default-list := true
 require := 'require() { tool="$1"; if command -v "$tool" >/dev/null 2>&1; then echo "✓ $tool 已安装,跳过"; else shift; echo ">> 安装 $tool"; eval "$@" || echo "跳过 $tool"; fi; }'
 
 # 安装全部工具
-setup: apt rust cargo-tools python bun sqlx\
+setup: apt rust cargo-tools python bun sqlx proxy \
        rtk git-hooks gui-tools
     @echo "✅ 常用工具安装完成"
     @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
@@ -88,21 +88,15 @@ rtk:
     @echo "💡 执行: rtk init -g # 接入 AI 工具 Claude Code / Copilot"
 
 # 代理端口: 写入 ~/.bashrc 的代理别名统一使用该端口
-proxy_port := '33211'
-
+proxy_port := '15490'
 # 代理开关名: 开启代理用 px,关闭代理用 unpx
 proxy_on := 'px'
-
 proxy_off := 'unpx'
-
-# 写入 ~/.bashrc 的代理开关(已存在则跳过)
+# 写入 ~/.bashrc 的代理开关(每次覆盖旧配置)
 proxy:
-    @if grep -q "^{{proxy_on}}()" "$HOME/.bashrc" 2>/dev/null; then \
-        echo "✓ 代理开关已存在于 ~/.bashrc,跳过"; \
-    else \
+    @sed -i '/^# 代理开关/d; /^{{proxy_on}}()/d; /^{{proxy_off}}()/d' "$HOME/.bashrc" 2>/dev/null || true; \
         printf '\n# 代理开关 ({{proxy_port}})\n{{proxy_on}}() { export http_proxy=http://127.0.0.1:{{proxy_port}} https_proxy=http://127.0.0.1:{{proxy_port}} all_proxy=socks5://127.0.0.1:{{proxy_port}} no_proxy=localhost,127.0.0.1,::1; }\n{{proxy_off}}() { unset http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY; }\n' >> "$HOME/.bashrc"; \
-        echo "✅ 已写入代理开关 {{proxy_on}} / {{proxy_off}} 到 ~/.bashrc"; \
-    fi
+        echo "✅ 已写入代理开关 {{proxy_on}} / {{proxy_off}} (端口 {{proxy_port}}) 到 ~/.bashrc"
     @echo "💡 执行: source ~/.bashrc # 生效后用 {{proxy_on}} / {{proxy_off}} 开关代理"
 
 # 打印 GUI 工具的下载地址(macOS/Windows)
