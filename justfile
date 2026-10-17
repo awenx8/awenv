@@ -47,7 +47,6 @@ cargo-tools: rust
         bottom:btm \
         eza:eza \
         fd-find:fd \
-        fnm:fnm \
         git-delta:delta \
         just:just \
         ripgrep:rg \
@@ -80,8 +79,8 @@ sqlx: rust
 python_version := '3.12'
 
 # 安装 Python 工具链(uv + 托管 Python,并设为全局默认版本)
-python:
-    @{{require}}; require uv 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+python: rust
+    @{{require}}; require uv 'cargo install --locked uv'
     @{{require}}; require mypy 'uv tool install mypy'
     @{{require}}; require pre-commit 'uv tool install pre-commit'
     @{{require}}; require ruff 'uv tool install ruff'
@@ -89,18 +88,19 @@ python:
     uv python install {{python_version}} --default || echo "跳过 Python(安装失败)"; \
     uv python pin --global {{python_version}} || echo "跳过全局默认版本设置"; \
 
-# 安装 bun JavaScript 运行时(安装脚本依赖 unzip)
-bun:
-    @{{require}}; \
-    if ! command -v bun >/dev/null 2>&1 && [ "$(uname)" != "Darwin" ]; then \
-        require unzip 'sudo apt install -y unzip'; \
-    fi
-    @{{require}}; require bun 'curl -fsSL https://bun.sh/install | bash'
+# 安装 bun JavaScript 运行时
+bun: node
+    @{{require}}; source ~/.bashrc; require bun 'npm install -g bun'
+
+# 安装 fnm(Node.js 版本管理器,有预编译包)
+fnm: rust
+    @{{require}}; require cargo-binstall 'cargo install cargo-binstall'
+    @{{require}}; require fnm 'cargo-binstall -y fnm'
 
 # 托管 Node.js 版本:安装与全局默认版本共用
 nodejs_version := '24'
 # 安装 Node.js 运行时
-node: cargo-tools
+node: fnm
     @echo ">> 安装 Node.js {{nodejs_version}} 并设为默认"
     @fnm install {{nodejs_version}} || echo "跳过 Node.js(安装失败)"
     @fnm default {{nodejs_version}} || echo "跳过全局默认版本设置"
@@ -110,8 +110,8 @@ node: cargo-tools
     @echo "💡 执行: source ~/.bashrc # 生效后 node/npm 可用, 进项目目录自动切换版本"
 
 # 安装 rtk: 压缩命令行输出,降低 AI 编程助手的 token 消耗
-rtk:
-    @{{require}}; require rtk 'curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh'
+rtk: rust
+    @{{require}}; require rtk 'cargo install --git https://github.com/rtk-ai/rtk --branch master rtk'
     @echo "💡 执行: rtk init -g # 接入 AI 工具 Claude Code / Copilot"
 
 # 代理端口: 写入 ~/.bashrc 的代理别名统一使用该端口
