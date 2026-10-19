@@ -22,7 +22,7 @@ require := 'export PATH="$HOME/.cargo/bin:$PATH"; require() { tool="$1"; if comm
 setup: apt rust cargo-tools python bun node sqlx proxy \
        rtk git-hooks gui-tools
     @echo "✅ 常用工具安装完成"
-    @echo "💡 提示: 新安装的工具可能需要执行 source ~/.bashrc 或 source ~/.zshrc 或重开终端才能使用"
+    @echo "💡 提示: 新安装的工具可能需要执行 source $HOME/.bashrc 或 source $HOME/.zshrc 或重开终端才能使用"
 
 # 转发到子项目: 进入 aitools/claude/ 执行其 justfile 中的命令
 # 用法: just claude setup / just claude config / just claude statusline
@@ -81,6 +81,9 @@ python_version := '3.12'
 # 安装 Python 工具链(uv + 托管 Python,并设为全局默认版本)
 python: rust
     @{{require}}; require uv 'cargo install --locked uv'
+    @sed -i '/^# Python 虚拟环境/d; /^source \.venv\/bin\/activate$/d' "$HOME/.bashrc" 2>/dev/null || true
+    @printf '\n# Python 虚拟环境\nsource .venv/bin/activate\n' >> "$HOME/.bashrc"
+    @echo "✅ 已写入 source .venv/bin/activate 到 $HOME/.bashrc"
     @{{require}}; require mypy 'uv tool install mypy'
     @{{require}}; require pre-commit 'uv tool install pre-commit'
     @{{require}}; require ruff 'uv tool install ruff'
@@ -90,7 +93,7 @@ python: rust
 
 # 安装 bun JavaScript 运行时
 bun: node
-    @{{require}}; source ~/.bashrc; require bun 'npm install -g bun'
+    @{{require}}; source $HOME/.bashrc; require bun 'npm install -g bun'
 
 # 安装 fnm(Node.js 版本管理器,有预编译包)
 fnm: rust
@@ -106,25 +109,25 @@ node: fnm
     @fnm default {{nodejs_version}} || echo "跳过全局默认版本设置"
     @sed -i '/^# fnm(Node.js 版本管理)/d; /^eval ".*\$(fnm env --use-on-cd)"/d' "$HOME/.bashrc" 2>/dev/null || true
     @printf '\n# fnm(Node.js 版本管理)\neval "$(fnm env --use-on-cd)"\n' >> "$HOME/.bashrc"
-    @echo "✅ 已写入 fnm 初始化到 ~/.bashrc"
-    @echo "💡 执行: source ~/.bashrc # 生效后 node/npm 可用, 进项目目录自动切换版本"
+    @echo "✅ 已写入 fnm 初始化到 $HOME/.bashrc"
+    @echo "💡 执行: source $HOME/.bashrc # 生效后 node/npm 可用, 进项目目录自动切换版本"
 
 # 安装 rtk: 压缩命令行输出,降低 AI 编程助手的 token 消耗
 rtk: rust
     @{{require}}; require rtk 'cargo install --git https://github.com/rtk-ai/rtk --branch master rtk'
     @echo "💡 执行: rtk init -g # 接入 AI 工具 Claude Code / Copilot"
 
-# 代理端口: 写入 ~/.bashrc 的代理别名统一使用该端口
+# 代理端口: 写入 $HOME/.bashrc 的代理别名统一使用该端口
 proxy_port := '15490'
 # 代理开关名: 开启代理用 px,关闭代理用 unpx
 proxy_on := 'px'
 proxy_off := 'unpx'
-# 写入 ~/.bashrc 的代理开关(每次覆盖旧配置)
+# 写入 $HOME/.bashrc 的代理开关(每次覆盖旧配置)
 proxy:
     @sed -i '/^# 代理开关/d; /^{{proxy_on}}()/d; /^{{proxy_off}}()/d' "$HOME/.bashrc" 2>/dev/null || true; \
         printf '\n# 代理开关 ({{proxy_port}})\n{{proxy_on}}() { export http_proxy=http://127.0.0.1:{{proxy_port}} https_proxy=http://127.0.0.1:{{proxy_port}} all_proxy=socks5://127.0.0.1:{{proxy_port}} no_proxy=localhost,127.0.0.1,::1; }\n{{proxy_off}}() { unset http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY; }\n' >> "$HOME/.bashrc"; \
-        echo "✅ 已写入代理开关 {{proxy_on}} / {{proxy_off}} (端口 {{proxy_port}}) 到 ~/.bashrc"
-    @echo "💡 执行: source ~/.bashrc # 生效后用 {{proxy_on}} / {{proxy_off}} 开关代理"
+        echo "✅ 已写入代理开关 {{proxy_on}} / {{proxy_off}} (端口 {{proxy_port}}) 到 $HOME/.bashrc"
+    @echo "💡 执行: source $HOME/.bashrc # 生效后用 {{proxy_on}} / {{proxy_off}} 开关代理"
 
 # 打印 GUI 工具的下载地址(macOS/Windows)
 gui-tools:
@@ -148,11 +151,11 @@ gui-tools:
 # 启用 git 提交前钩子
 git-hooks:
     @echo ">> 配置 git 全局钩子目录"
-    @mkdir -p ~/.config/git/hooks
+    @mkdir -p $HOME/.config/git/hooks
     @if [ -d .husky ]; then \
-        cp -f .husky/* ~/.config/git/hooks/; \
-        chmod +x ~/.config/git/hooks/*; \
-        echo "✅ Git 钩子已从 .husky 复制到 ~/.config/git/hooks/"; \
+        cp -f .husky/* $HOME/.config/git/hooks/; \
+        chmod +x $HOME/.config/git/hooks/*; \
+        echo "✅ Git 钩子已从 .husky 复制到 $HOME/.config/git/hooks/"; \
     else \
         echo ">> 未找到 .husky 目录,跳过复制钩子"; \
     fi
