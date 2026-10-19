@@ -1,4 +1,4 @@
-# 个人常用工具安装与设置
+# 常用工具安装与设置
 #
 # 运行环境: 所有配方在 POSIX shell(sh)中执行,适用于 Linux、macOS,
 # 以及 Windows 上的 WSL / Git Bash
