@@ -17,6 +17,7 @@
     "commit": "",
     "pr": ""
   },
+  "language": "简体中文",
   "skipDangerousModePermissionPrompt": true,
   "enableArtifact": false,
   "skillOverrides": {
