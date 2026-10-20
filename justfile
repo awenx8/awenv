@@ -133,9 +133,11 @@ proxy:
 gui-tools:
     @echo "提示: 以下桌面应用需自行前往对应地址下载并安装"
     @echo "----------------------------------------"
+    @echo "AionUi:         https://github.com/iOfficeAI/AionUi"
     @echo "dbx:            https://github.com/t8y2/dbx/releases"
     @echo "docker:         https://www.docker.com/products/docker-desktop/"
     @echo "github-desktop: https://desktop.github.com/"
+    @echo "keynote:        https://www.apple.com.cn/keynote/"
     @echo "oxideterm:      https://oxideterm.app/zh-hans/"
     @echo "vscode:         https://code.visualstudio.com/download"
     @echo "zed:            https://zed.dev/"
