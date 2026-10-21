@@ -29,6 +29,11 @@ setup: apt rust cargo-tools python bun node sqlx proxy \
 claude *args: setup
     @cd "{{ justfile_directory() }}/aitools/claude" && just {{ args }}
 
+# 转发到子项目: 进入 aitools/ollama/ 执行其 justfile 中的命令
+# 用法: just ollama setup / just ollama run / just ollama list
+ollama *args: setup
+    @cd "{{ justfile_directory() }}/aitools/ollama" && just {{ args }}
+
 # 安装 apt 基础工具
 apt:
     @{{require}}; require fzf 'sudo apt install -y fzf tmux jq gh git'

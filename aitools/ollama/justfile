@@ -1,0 +1,271 @@
+# Ollama 本地大模型一键安装与使用
+#
+# 用法:
+#   just setup               一键执行: 安装 → 下载默认模型
+#   just install             仅安装 Ollama（已安装则跳过）
+#   just pull [model]        下载模型（默认 qwen3.5:4b）
+#   just run [model]         下载模型并进入对话
+#   just list                查看本机已下载的模型
+#   just ps                  查看正在运行的模型
+#   just rm-model <model>    删除已下载的模型
+#   just serve               手动启动 Ollama 服务
+#
+# Cloud（云端模型，无需下载）:
+#   just cloud-setup         登录 Ollama 并写入 API key
+#   just cloud-key           仅配置 API key（交互输入）
+#   just cloud-run [model]   用云端模型对话（默认 gemma4:cloud）
+#   just cloud-test [model]  调用 cloud API 测试（默认 gemma4:cloud）
+#   just cloud-list          列出云端可用模型
+#   just launch [app]        启动集成（claude/codex/opencode/droid/vscode）
+#   just occ-alias [model]   写入 occ 别名（独立配置目录，默认 gemma4:cloud）
+#   just cloud-disable       切换为纯本地模式
+#   just cloud-enable        重新启用 cloud
+
+set default-list := true
+
+# 默认本地模型；可通过环境变量 OLLAMA_MODEL 覆盖
+model := env("OLLAMA_MODEL", "qwen3.5:4b")
+
+# 默认云端 CLI 模型（固定 :cloud 后缀）
+cloud_model := env("OLLAMA_CLOUD_MODEL", "gemma4:cloud")
+
+# 非交互配置 API key 的来源；留空时由 cloud-key 交互读取
+cloud_key_arg := env("OLLAMA_API_KEY", "")
+
+# occ 启动 Claude Code 的上下文上限（默认 1000000，单位 token）
+claude_max_ctx := env("OLLAMA_CLAUDE_MAX_CONTEXT_TOKENS", "1000000")
+
+# 一键执行: 安装 → 下载模型
+setup: install pull
+	@echo "完成。执行 just run 进入对话，输入 /bye 退出。"
+
+# 安装 Ollama；已在 PATH 中则跳过
+install:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	if command -v ollama >/dev/null 2>&1; then
+	  echo "==> 已安装，跳过: $(command -v ollama)"
+	  exit 0
+	fi
+
+	echo "==> 安装 Ollama"
+	case "$(uname -s)" in
+	  Darwin|Linux)
+	    # macOS、Linux、WSL 使用官方脚本
+	    curl -fsSL https://ollama.com/install.sh | sh
+	    ;;
+	  MINGW*|MSYS*|CYGWIN*)
+	    # Windows（Git Bash）调用 PowerShell 安装
+	    powershell.exe -NoProfile -Command "irm https://ollama.com/install.ps1 | iex"
+	    ;;
+	  *)
+	    echo "不支持的系统: $(uname -s)，请手动下载安装包: https://ollama.com/download" >&2
+	    exit 1
+	    ;;
+	esac
+
+	command -v ollama >/dev/null 2>&1 || {
+	  echo "安装完成但 ollama 不在 PATH 中，请重开终端后再试" >&2
+	  exit 1
+	}
+	echo "==> 安装完成: $(ollama --version 2>/dev/null | head -n 1)"
+
+# 下载模型
+pull target=model: install
+	#!/usr/bin/env bash
+	set -euo pipefail
+	echo "==> 下载模型 {{ target }}"
+	ollama pull '{{ target }}'
+
+# 进入对话（模型未下载时会自动拉取）
+run target=model: install
+	#!/usr/bin/env bash
+	set -euo pipefail
+	ollama run '{{ target }}'
+
+# 查看本机已下载的模型
+list:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	command -v ollama >/dev/null 2>&1 || { echo "未安装，先执行 just install" >&2; exit 1; }
+	ollama list
+
+# 查看正在运行的模型
+ps:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	command -v ollama >/dev/null 2>&1 || { echo "未安装，先执行 just install" >&2; exit 1; }
+	ollama ps
+
+# 删除已下载的模型，释放磁盘空间
+rm-model target:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	command -v ollama >/dev/null 2>&1 || { echo "未安装，先执行 just install" >&2; exit 1; }
+	[ -n '{{ target }}' ] || { echo "用法: just rm-model <model>" >&2; exit 1; }
+	ollama rm '{{ target }}'
+
+# 手动启动 Ollama 服务（无 systemd 或服务未运行时使用）
+serve: install
+	#!/usr/bin/env bash
+	set -euo pipefail
+	ollama serve
+
+# 查看全部可用命令
+help: install
+	@ollama --help
+
+# Cloud 一键配置: 登录 + API key
+cloud-setup: install cloud-signin cloud-key
+	@echo "完成。执行 source ~/.bashrc 后可用，或直接 just cloud-run"
+
+# 登录 Ollama 账号（CLI 使用云端模型所需）
+cloud-signin: install
+	@ollama signin
+
+# 退出 Ollama 账号
+cloud-signout: install
+	@ollama signout
+
+# 配置 API key：写入 ~/.config/ollama/cloud.env（权限 600），并注册到 ~/.bashrc
+cloud-key token=cloud_key_arg:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	key_file="$HOME/.config/ollama/cloud.env"
+	rc="$HOME/.bashrc"
+	token='{{ token }}'
+
+	if [ -z "$token" ]; then
+	  printf '==> OLLAMA_API_KEY（在 https://ollama.com/settings/keys 创建）: '
+	  read -r -s token || true
+	  printf '\n'
+	fi
+	[ -n "$token" ] || { echo "OLLAMA_API_KEY 不能为空" >&2; exit 1; }
+
+	mkdir -p "$(dirname "$key_file")"
+	umask 077
+	printf 'export OLLAMA_API_KEY=%q\n' "$token" >"$key_file"
+	chmod 600 "$key_file"
+
+	# 新开终端自动加载；已存在则不重复追加
+	line='[ -f "$HOME/.config/ollama/cloud.env" ] && . "$HOME/.config/ollama/cloud.env"'
+	if ! grep -qxF "$line" "$rc" 2>/dev/null; then
+	  printf '\n# Ollama cloud API key\n%s\n' "$line" >>"$rc"
+	fi
+	echo "==> 已写入 $key_file（权限 600）"
+	echo "==> 当前终端生效: source $key_file"
+
+# 用云端模型对话（无需下载，需先执行 just cloud-signin）
+cloud-run target=cloud_model: install
+	#!/usr/bin/env bash
+	set -euo pipefail
+	ollama run '{{ target }}'
+
+# 调用 cloud API 做一次对话，验证 key 是否可用（无需安装 Ollama）
+cloud-test target=cloud_model:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	key_file="$HOME/.config/ollama/cloud.env"
+	if [ -z "${OLLAMA_API_KEY:-}" ] && [ -f "$key_file" ]; then
+	  . "$key_file"
+	fi
+	[ -n "${OLLAMA_API_KEY:-}" ] || { echo "缺少 OLLAMA_API_KEY，先执行 just cloud-key" >&2; exit 1; }
+	command -v jq >/dev/null 2>&1 || { echo "需要 jq: https://jqlang.github.io/jq/" >&2; exit 1; }
+
+	payload="$(jq -nc --arg m '{{ target }}' \
+	  '{model:$m, messages:[{role:"user",content:"Say hello in one sentence."}], stream:false}')"
+	echo "==> 调用 cloud API，模型 {{ target }}"
+	curl -fsSL https://ollama.com/api/chat \
+	  -H "Authorization: Bearer $OLLAMA_API_KEY" \
+	  -H "Content-Type: application/json" \
+	  -d "$payload" | jq -r '.message.content // .'
+
+# 列出云端可用模型（API 使用返回的名称，如 gemma4:cloud）
+cloud-list:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	command -v jq >/dev/null 2>&1 || { echo "需要 jq: https://jqlang.github.io/jq/" >&2; exit 1; }
+	curl -fsSL https://ollama.com/api/tags | jq -r '.models[]?.name // empty'
+
+# 启动集成，参数留空则进入交互选择
+launch app="":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	command -v ollama >/dev/null 2>&1 || { echo "未安装，先执行 just install" >&2; exit 1; }
+	case '{{ app }}' in
+	  "") ollama launch ;;
+	  claude|codex|opencode|droid|vscode) ollama launch '{{ app }}' ;;
+	  *) echo "不支持的集成: {{ app }}（可选 claude/codex/opencode/droid/vscode）" >&2; exit 1 ;;
+	esac
+
+# shell export 会被 ~/.claude/settings.json 的 env 覆盖，故用 --settings 文件（CLI 优先级最高）
+# 写入 occ 别名（用 ollama 启动 Claude Code，默认云端模型，可用参数覆盖），已存在则直接覆盖
+occ-alias target=cloud_model:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	rc="$HOME/.bashrc"
+	settings_file="$HOME/.ollama/claude-settings.json"
+	base_url="${OLLAMA_HOST:-127.0.0.1:11434}"
+
+	command -v jq >/dev/null 2>&1 || { echo "需要 jq: https://jqlang.github.io/jq/" >&2; exit 1; }
+	case "$base_url" in
+	  http://*|https://*) ;;
+	  *) base_url="http://$base_url" ;;
+	esac
+	# 0.0.0.0 只用于监听，客户端连接回环地址
+	base_url="${base_url/0.0.0.0/127.0.0.1}"
+
+	# 覆盖 settings.json 中的第三方 base url、模型与 bypassPermissions
+	mkdir -p "$(dirname "$settings_file")"
+	jq -n --arg base "$base_url" --arg model '{{ target }}' --arg max_ctx '{{ claude_max_ctx }}' '{
+	  env: {
+	    ANTHROPIC_AUTH_TOKEN: "ollama",
+	    ANTHROPIC_BASE_URL: $base,
+	    ANTHROPIC_MODEL: $model,
+	    ANTHROPIC_DEFAULT_OPUS_MODEL: $model,
+	    ANTHROPIC_DEFAULT_FABLE_MODEL: $model,
+	    ANTHROPIC_DEFAULT_SONNET_MODEL: $model,
+	    ANTHROPIC_DEFAULT_HAIKU_MODEL: $model,
+	    CLAUDE_CODE_MAX_CONTEXT_TOKENS: $max_ctx
+	  }
+	}' >"$settings_file"
+	echo "==> 已写入 $settings_file"
+
+	line="alias occ='IS_SANDBOX=1 ollama launch claude --model {{ target }} -- --disallowedTools DesignSync NotebookEdit EnterWorktree ExitWorktree --settings \"\$HOME/.ollama/claude-settings.json\"'"
+	mkdir -p "$(dirname "$rc")"
+	[ -f "$rc" ] || touch "$rc"
+	if grep -qxF "$line" "$rc"; then
+	  echo "==> 别名已存在: $rc"
+	  exit 0
+	fi
+	# 覆盖旧的 occ 别名行，避免同名别名堆积（后者覆盖前者）
+	tmp="$(mktemp)"
+	sed '/^alias occ=/d' "$rc" >"$tmp"
+	printf '%s\n' "$line" >>"$tmp"
+	mv "$tmp" "$rc"
+	echo "==> 已覆盖写入 $rc"
+
+# 纯本地模式：关闭 cloud 模型与 web search
+cloud-disable:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	settings="$HOME/.ollama/server.json"
+	mkdir -p "$(dirname "$settings")"
+	[ -f "$settings" ] || printf '{}\n' >"$settings"
+	tmp="$(mktemp)"
+	jq '.disable_ollama_cloud = true' "$settings" >"$tmp"
+	mv "$tmp" "$settings"
+	echo "==> 已禁用 cloud: $settings"
+	echo "==> 重启 Ollama 后生效（Linux: systemctl restart ollama）"
+
+# 重新启用 cloud 模型与 web search
+cloud-enable:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	settings="$HOME/.ollama/server.json"
+	[ -f "$settings" ] || { echo "未找到 $settings，cloud 默认已启用" ; exit 0; }
+	tmp="$(mktemp)"
+	jq '.disable_ollama_cloud = false' "$settings" >"$tmp"
+	mv "$tmp" "$settings"
+	echo "==> 已启用 cloud: $settings"
+	echo "==> 重启 Ollama 后生效（Linux: systemctl restart ollama）"
