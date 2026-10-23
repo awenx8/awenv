@@ -152,8 +152,7 @@ gui-tools:
     @echo "----------------------------------------"
     @echo "字体下载"
     @echo "----------------------------------------"
-    @echo "JetBrains Mono: https://www.jetbrains.com/zh-cn/lp/mono/"
-    @echo "LXGW WenKai:    https://github.com/lxgw/LxgwWenKai-Screen/releases"
+    @echo "Maple Mono:    https://github.com/subframe7536/maple-font"
 
 # 启用 git 提交前钩子
 git-hooks:
