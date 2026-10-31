@@ -18,6 +18,7 @@
     "pr": ""
   },
   "language": "简体中文",
+  "skipWebFetchPreflight": true,
   "skipDangerousModePermissionPrompt": true,
   "enableArtifact": false,
   "skillOverrides": {
